@@ -165,11 +165,7 @@ export async function buildContext(input: string, progress: (step: string, pct: 
   const [robots, sitemap, productsRes, collectionsRes, privacy, refund, terms, shipping] = await Promise.all([
     tryFetch(`${origin}/robots.txt`, { accept: "text/plain,*/*" }),
     tryFetch(`${origin}/sitemap.xml`, { accept: "application/xml,*/*" }),
-    tryFetch(`${origin}/products.json?limit=250`, { accept: "application/json", maxBytes: 6_000_000 }).then(async (r) => {
-      if (r?.status !== 429) return r;
-      await new Promise((res) => setTimeout(res, 2500));
-      return tryFetch(`${origin}/products.json?limit=250`, { accept: "application/json", maxBytes: 6_000_000 });
-    }),
+    tryFetch(`${origin}/products.json?limit=250`, { accept: "application/json", maxBytes: 6_000_000 }),
     tryFetch(`${origin}/collections.json?limit=250`, { accept: "application/json" }),
     pol("privacy-policy"),
     pol("refund-policy"),

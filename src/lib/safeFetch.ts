@@ -147,6 +147,9 @@ export async function safeFetch(
 
 export async function tryFetch(url: string, opts: SafeFetchOptions = {}): Promise<FetchResult | null> {
   try {
+    const res = await safeFetch(url, { timeoutMs: 10000, maxBytes: 2_000_000, ...opts });
+    if (res.status !== 429) return res;
+    await new Promise((r) => setTimeout(r, 2500));
     return await safeFetch(url, { timeoutMs: 10000, maxBytes: 2_000_000, ...opts });
   } catch {
     return null;
