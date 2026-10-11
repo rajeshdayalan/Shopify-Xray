@@ -51,12 +51,16 @@ export function isPublicHost(hostname: string): Promise<boolean> {
       if (host === "localhost" || host.endsWith(".local") || host.endsWith(".internal") || host.endsWith(".localhost")) {
         return false;
       }
-      try {
-        const records = await lookup(host, { all: true });
-        return records.length > 0 && !records.some((r) => isPrivateIp(r.address));
-      } catch {
-        return false;
+      for (let attempt = 0; attempt < 2; attempt++) {
+        try {
+          const records = await lookup(host, { all: true });
+          return records.length > 0 && !records.some((r) => isPrivateIp(r.address));
+        } catch {
+          if (attempt === 0) await new Promise((r) => setTimeout(r, 300));
+        }
       }
+      hostCache.delete(host);
+      return false;
     })();
     hostCache.set(host, cached);
     if (hostCache.size > 5000) hostCache.clear();

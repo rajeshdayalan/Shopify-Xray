@@ -1,4 +1,4 @@
-import type { Doc, ScanContext } from "../context";
+import { isUnverifiable, type Doc, type ScanContext } from "../context";
 import type { CheckResult } from "../types";
 import { hasSearch, makeCheck, shortUrl, stripHtml } from "./helpers";
 
@@ -132,6 +132,16 @@ export function sitemapRobots(ctx: ScanContext): CheckResult {
   const sitemapOk = !!s && s.status < 400 && /<(urlset|sitemapindex)/i.test(s.body);
   const childCount = sitemapOk ? (s!.body.match(/<loc>/gi) || []).length : 0;
   const productsSitemap = sitemapOk && /sitemap_products/i.test(s!.body);
+  if ((!robotsOk && isUnverifiable(r?.status)) || (!sitemapOk && isUnverifiable(s?.status))) {
+    return makeCheck(def, {
+      status: "warn",
+      severity: "medium",
+      confidence: "low",
+      summary: "robots.txt or sitemap.xml didn't respond (rate-limited or timed out), so this couldn't be fully verified.",
+      evidence: [`robots.txt → ${r?.status ?? "no response"}`, `sitemap.xml → ${s?.status ?? "no response"}`],
+      recommendations: ["Re-run the scan in a few minutes, or open /robots.txt and /sitemap.xml in a browser."],
+    });
+  }
   const evidence = [
     `robots.txt: ${robotsOk ? "valid" : r ? `HTTP ${r.status}, ${/user-agent/i.test(r.body) ? "" : "no User-agent rules"}` : "unreachable"}`,
     `robots.txt references sitemap: ${robotsSitemap ? "yes" : "no"}`,

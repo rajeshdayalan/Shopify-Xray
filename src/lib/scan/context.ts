@@ -49,6 +49,7 @@ export interface ScanContext {
   robots: FetchResult | null;
   sitemap: FetchResult | null;
   policies: Record<"privacy" | "refund" | "terms" | "shipping", Doc | null>;
+  policyStatus: Record<"privacy" | "refund" | "terms" | "shipping", number | null>;
   catalog: ShopifyProduct[] | null;
   collectionCount: number | null;
   products: { doc: Doc; data: ShopifyProduct | null }[];
@@ -74,10 +75,17 @@ function toDoc(res: FetchResult): Doc {
   };
 }
 
+const fetchStatus = new Map<string, number | null>();
+
 async function fetchDoc(url: string): Promise<Doc | null> {
   const res = await tryFetch(url);
+  fetchStatus.set(url, res ? res.status : null);
   if (!res || res.status >= 400) return null;
   return toDoc(res);
+}
+
+export function isUnverifiable(status: number | null | undefined) {
+  return status === null || status === undefined || status === 429 || status >= 500;
 }
 
 function certInfo(host: string): Promise<{ daysLeft: number | null; error: string | null }> {
@@ -295,6 +303,12 @@ export async function buildContext(input: string, progress: (step: string, pct: 
     robots,
     sitemap,
     policies: { privacy, refund, terms, shipping },
+    policyStatus: {
+      privacy: fetchStatus.get(`${origin}/policies/privacy-policy`) ?? null,
+      refund: fetchStatus.get(`${origin}/policies/refund-policy`) ?? null,
+      terms: fetchStatus.get(`${origin}/policies/terms-of-service`) ?? null,
+      shipping: fetchStatus.get(`${origin}/policies/shipping-policy`) ?? null,
+    },
     catalog,
     collectionCount,
     products,

@@ -1,4 +1,4 @@
-import type { ScanContext } from "../context";
+import { isUnverifiable, type ScanContext } from "../context";
 import type { CheckResult, TechDetection } from "../types";
 import { makeCheck, shortUrl, stripHtml } from "./helpers";
 
@@ -345,8 +345,18 @@ export function returnsPolicy(ctx: ScanContext): CheckResult {
   const windowMatch = text.match(/\b(\d{1,3})[- ]days?\b/i);
   const exchanges = /exchange/i.test(text);
   const cancel = /cancel/i.test(text);
+  if (!refund && isUnverifiable(ctx.policyStatus.refund)) {
+    return makeCheck(def, {
+      status: "warn",
+      severity: "medium",
+      confidence: "low",
+      summary: "We couldn't load the refund policy (the store rate-limited or didn't respond), so this couldn't be verified.",
+      evidence: [`/policies/refund-policy → ${ctx.policyStatus.refund ?? "no response"}`],
+      recommendations: ["Re-run the scan in a few minutes, or confirm /policies/refund-policy loads in a browser."],
+    });
+  }
   const evidence = [
-    `Refund policy: ${refund ? `published (${text.length} chars)` : "not found at /policies/refund-policy"}`,
+    `Refund policy: ${refund ? `published (${text.length} chars)` : `not found at /policies/refund-policy (HTTP ${ctx.policyStatus.refund})`}`,
     `Linked from home page/footer: ${linked ? "yes" : "no"}`,
     `Return window stated: ${windowMatch ? `${windowMatch[1]} days` : "not found"}`,
     `Mentions exchanges: ${exchanges ? "yes" : "no"} · cancellations: ${cancel ? "yes" : "no"}`,
